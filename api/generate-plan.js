@@ -30,7 +30,7 @@ export default async function handler(request, response) {
         reportData.report_date = new Date().toLocaleDateString('en-US');
         reportData.report_id = `SRWX-${Date.now()}`;
 
-        const pdfResponse = await fetch('https://api.pdfmonkey.io/v1/documents', {
+        const pdfResponse = await fetch('https://api.pdfmonkey.io/api/v1/documents', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.PDFMONKEY_API_KEY}` },
             body: JSON.stringify({ document: { template_id: process.env.PDFMONKEY_TEMPLATE_ID, payload: reportData, status: 'draft' } }),
