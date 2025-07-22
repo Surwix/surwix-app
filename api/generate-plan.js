@@ -36,7 +36,7 @@ export default async function handler(request, response) {
 
         // --- 2. Генерируем PDF с помощью PDFMonkey ---
         console.log('[2/4] Sending data to PDFMonkey...');
-        const pdfResponse = await fetch('https://api.pdfmonkey.io/v1/documents', {
+        const pdfResponse = await fetch('https://api.pdfmonkey.io/api/v1/documents', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
