@@ -2,9 +2,8 @@ import { OpenAI } from 'openai';
 import fetch from 'node-fetch';
 import nodemailer from 'nodemailer';
 
-// This helper function creates the HTML for the PDF.
-// Keeping it separate makes the main code cleaner.
 function createPdfHtml(data) {
+    // Helper function to create the HTML for our PDF
     return `
         <!DOCTYPE html>
         <html lang="en">
@@ -31,7 +30,6 @@ function createPdfHtml(data) {
     `;
 }
 
-// This is the main serverless function.
 export default async function handler(request, response) {
     if (request.method !== 'POST') {
         return response.status(405).json({ message: 'Method Not Allowed' });
@@ -46,7 +44,6 @@ export default async function handler(request, response) {
         // --- Step 1: Get data from OpenAI ---
         console.log(`[1/3] Getting AI data for: ${address}`);
         const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-        // A simpler prompt to reduce AI processing time.
         const prompt = `For the U.S. address "${address}", generate a JSON object with one key: "main_advice" (a short sentence).`;
         const aiCompletion = await openai.chat.completions.create({
             model: "gpt-4o",
@@ -58,23 +55,37 @@ export default async function handler(request, response) {
         reportData.report_date = new Date().toLocaleDateString('en-US');
         console.log('AI data received.');
 
-        // --- Step 2: Generate PDF with Api2Pdf ---
+        // --- Step 2: Generate PDF with Api2Pdf (Corrected Logic) ---
         console.log('[2/3] Generating PDF with Api2Pdf...');
         const htmlToConvert = createPdfHtml(reportData);
-        const api2pdfResponse = await fetch('https://v2.api2pdf.com/chrome/html', {
+        
+        // ✅ 1. Используем стабильный URL и отправляем запрос на создание PDF
+        const api2pdfResponse = await fetch('https://v2018.api2pdf.com/chrome/html', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': process.env.API2PDF_KEY,
             },
-            body: JSON.stringify({ html: htmlToConvert }),
+            body: JSON.stringify({ html: htmlToConvert, inlinePdf: false }),
         });
 
         if (!api2pdfResponse.ok) {
             throw new Error(`Api2Pdf Error: ${await api2pdfResponse.text()}`);
         }
-        const pdfBuffer = await api2pdfResponse.arrayBuffer();
-        console.log('PDF generated.');
+
+        // ✅ 2. Получаем JSON с ссылкой на готовый файл
+        const api2pdfResult = await api2pdfResponse.json();
+        const pdfUrl = api2pdfResult.pdf;
+
+        if (!pdfUrl) {
+            throw new Error('Api2Pdf did not return a PDF URL.');
+        }
+        console.log('PDF URL received from Api2Pdf.');
+
+        // ✅ 3. Скачиваем PDF-файл по полученной ссылке
+        const pdfDownloadResponse = await fetch(pdfUrl);
+        const pdfBuffer = await pdfDownloadResponse.arrayBuffer();
+        console.log('PDF file downloaded.');
 
         // --- Step 3: Send email with Nodemailer ---
         console.log(`[3/3] Sending email to: ${email}...`);
@@ -89,13 +100,12 @@ export default async function handler(request, response) {
             text: "Thank you for using Surwix. Your AI-generated evacuation plan is attached.",
             attachments: [{
                 filename: 'Surwix-Evacuation-Plan.pdf',
-                content: pdfBuffer,
+                content: Buffer.from(pdfBuffer), // Buffer.from() здесь на всякий случай, т.к. arrayBuffer() уже дает нужный тип
                 contentType: 'application/pdf',
             }],
         });
         console.log('Email sent.');
 
-        // --- Success ---
         return response.status(200).json({ message: 'Success! Your report has been generated and sent to your email.' });
 
     } catch (error) {
