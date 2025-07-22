@@ -1,5 +1,5 @@
 import { OpenAI } from 'openai';
-import fetch from 'node-fetch';
+
 import nodemailer from 'nodemailer';
 
 // Инициализируем клиент OpenAI
