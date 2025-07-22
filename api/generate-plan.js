@@ -1,34 +1,9 @@
-import { OpenAI } from 'openai';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import fetch from 'node-fetch';
 import nodemailer from 'nodemailer';
 
-function createPdfHtml(data) {
-    // Helper function to create the HTML for our PDF
-    return `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <title>Surwix Evacuation Plan</title>
-            <style>
-                body { font-family: sans-serif; }
-                .container { max-width: 800px; margin: auto; padding: 20px; }
-                h1 { color: #003366; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>Personal Evacuation Plan</h1>
-                <p><strong>Address:</strong> ${data.address}</p>
-                <p><strong>Report Date:</strong> ${data.report_date}</p>
-                <hr>
-                <h2>Primary Advice</h2>
-                <p>${data.main_advice || 'Follow directions from local authorities.'}</p>
-            </div>
-        </body>
-        </html>
-    `;
-}
+// Инициализируем клиент Google Gemini
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export default async function handler(request, response) {
     if (request.method !== 'POST') {
@@ -41,53 +16,47 @@ export default async function handler(request, response) {
     }
 
     try {
-        // --- Step 1: Get data from OpenAI ---
-        console.log(`[1/3] Getting AI data for: ${address}`);
-        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-        const prompt = `For the U.S. address "${address}", generate a JSON object with one key: "main_advice" (a short sentence).`;
-        const aiCompletion = await openai.chat.completions.create({
-            model: "gpt-4o",
-            response_format: { type: "json_object" },
-            messages: [{ role: "user", content: prompt }],
-        });
-        const reportData = JSON.parse(aiCompletion.choices[0].message.content);
+        // --- 1. Получаем данные от ИИ (теперь Google Gemini) ---
+        console.log(`[1/3] Generating AI data using Google Gemini for: ${address}`);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const prompt = `Act as a U.S. emergency preparedness analyst for the address "${address}". Generate a JSON object with these exact keys: "risk_level_text" (string: "Medium"), "risk_level_color" (string: "medium"), "risks" (an array of 2 objects, each with "type", "level_text", "level_color", "advice"), and "action_steps" (an array of 3 short string sentences). Provide realistic mock data. Your response must be ONLY a valid JSON object without any other text or markdown.`;
+        
+        const result = await model.generateContent(prompt);
+        const aiResponseText = await result.response.text();
+        const reportData = JSON.parse(aiResponseText);
+        
         reportData.address = address;
         reportData.report_date = new Date().toLocaleDateString('en-US');
-        console.log('AI data received.');
+        reportData.report_id = `SRWX-${Date.now()}`;
+        console.log('AI data received from Gemini.');
 
-        // --- Step 2: Generate PDF with Api2Pdf (Corrected Logic) ---
-        console.log('[2/3] Generating PDF with Api2Pdf...');
-        const htmlToConvert = createPdfHtml(reportData);
-        
-        // ✅ 1. Используем стабильный URL и отправляем запрос на создание PDF
-        const api2pdfResponse = await fetch('https://v2018.api2pdf.com/chrome/html', {
+        // --- 2. Генерируем PDF с помощью PDFMonkey ---
+        console.log('[2/3] Sending data to PDFMonkey...');
+        const pdfResponse = await fetch('https://api.pdfmonkey.io/api/v1/documents', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': process.env.API2PDF_KEY,
+                'Authorization': `Bearer ${process.env.PDFMONKEY_API_KEY}`,
             },
-            body: JSON.stringify({ html: htmlToConvert, inlinePdf: false }),
+            body: JSON.stringify({
+                document: {
+                    document_template_id: process.env.PDFMONKEY_TEMPLATE_ID,
+                    payload: reportData,
+                    status: 'draft',
+                }
+            }),
         });
 
-        if (!api2pdfResponse.ok) {
-            throw new Error(`Api2Pdf Error: ${await api2pdfResponse.text()}`);
+        if (!pdfResponse.ok) {
+            throw new Error(`PDFMonkey Error: ${await pdfResponse.text()}`);
         }
-
-        // ✅ 2. Получаем JSON с ссылкой на готовый файл
-        const api2pdfResult = await api2pdfResponse.json();
-        const pdfUrl = api2pdfResult.pdf;
-
-        if (!pdfUrl) {
-            throw new Error('Api2Pdf did not return a PDF URL.');
-        }
-        console.log('PDF URL received from Api2Pdf.');
-
-        // ✅ 3. Скачиваем PDF-файл по полученной ссылке
+        const pdfData = await pdfResponse.json();
+        const pdfUrl = pdfData.document.download_url;
         const pdfDownloadResponse = await fetch(pdfUrl);
         const pdfBuffer = await pdfDownloadResponse.arrayBuffer();
-        console.log('PDF file downloaded.');
+        console.log('PDF generated and downloaded.');
 
-        // --- Step 3: Send email with Nodemailer ---
+        // --- 3. Отправляем письмо ---
         console.log(`[3/3] Sending email to: ${email}...`);
         const transporter = nodemailer.createTransport({
             service: 'gmail',
@@ -97,10 +66,10 @@ export default async function handler(request, response) {
             from: `"Surwix Reports" <${process.env.EMAIL_SERVER_USER}>`,
             to: email,
             subject: `Your Personal Evacuation Plan from Surwix`,
-            text: "Thank you for using Surwix. Your AI-generated evacuation plan is attached.",
+            text: "Your AI-generated evacuation plan is attached.",
             attachments: [{
                 filename: 'Surwix-Evacuation-Plan.pdf',
-                content: Buffer.from(pdfBuffer), // Buffer.from() здесь на всякий случай, т.к. arrayBuffer() уже дает нужный тип
+                content: Buffer.from(pdfBuffer),
                 contentType: 'application/pdf',
             }],
         });
