@@ -2,19 +2,26 @@ import { OpenAI } from 'openai';
 import fetch from 'node-fetch';
 import nodemailer from 'nodemailer';
 
+// Инициализируем клиент OpenAI
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+});
+
+// Основная серверная функция
 export default async function handler(request, response) {
-    console.log(`[LOG] Function started at ${new Date().toISOString()}`);
-    
+    if (request.method !== 'POST') {
+        return response.status(405).json({ message: 'Method Not Allowed' });
+    }
+
     const { address, email } = request.body;
     if (!address || !email) {
         return response.status(400).json({ message: 'Address and email are required' });
     }
 
     try {
-        // --- 1. OpenAI ---
-        console.log('[LOG] Step 1: Calling OpenAI API...');
-        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-        const prompt = `Act as a U.S. emergency preparedness analyst...`; // (prompt сокращен для ясности)
+        // --- 1. Получаем структурированные данные от ИИ ---
+        console.log(`[1/4] Generating AI data for: ${address}`);
+        const prompt = `Act as a U.S. emergency preparedness analyst. For the address "${address}", generate a concise evacuation plan. Your response must be ONLY a valid JSON object. Do not include any text or markdown before or after the JSON. The JSON must contain these exact keys: "risk_level_text", "risk_level_color", "critical_threats_count", "shelter_distance", "risks", "action_steps", "kit_items", "primary_route", "meeting_point". The "risks" key should be an array of objects, where each object has "type", "level_text", "level_color", and "advice". Use "high", "medium", or "low" for level_color. Generate realistic but mock data.`;
         
         const aiCompletion = await openai.chat.completions.create({
             model: "gpt-4o",
@@ -22,47 +29,68 @@ export default async function handler(request, response) {
             messages: [{ role: "user", content: prompt }],
         });
         const reportData = JSON.parse(aiCompletion.choices[0].message.content);
-        console.log('[LOG] Step 1 successful: OpenAI responded.');
 
-        // --- 2. PDFMonkey ---
-        console.log('[LOG] Step 2: Calling PDFMonkey API...');
         reportData.address = address;
         reportData.report_date = new Date().toLocaleDateString('en-US');
         reportData.report_id = `SRWX-${Date.now()}`;
 
+        // --- 2. Генерируем PDF с помощью PDFMonkey ---
+        console.log('[2/4] Sending data to PDFMonkey...');
         const pdfResponse = await fetch('https://api.pdfmonkey.io/v1/documents', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.PDFMONKEY_API_KEY}` },
-            body: JSON.stringify({ document: { template_id: process.env.PDFMONKEY_TEMPLATE_ID, payload: reportData, status: 'draft' } }),
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.PDFMONKEY_API_KEY}`,
+            },
+            body: JSON.stringify({
+                document: {
+                    // ✅ ИСПРАВЛЕННАЯ СТРОКА
+                    document_template_id: process.env.PDFMONKEY_TEMPLATE_ID,
+                    payload: reportData,
+                    status: 'draft',
+                }
+            }),
         });
-        console.log(`[LOG] Step 2 successful: PDFMonkey responded with status ${pdfResponse.status}.`);
-        
-        if (!pdfResponse.ok) throw new Error(`PDFMonkey API Error`);
+
+        if (!pdfResponse.ok) {
+            const errorText = await pdfResponse.text();
+            throw new Error(`PDFMonkey API Error: ${errorText}`);
+        }
         const pdfData = await pdfResponse.json();
         const downloadUrl = pdfData.document.download_url;
 
-        // --- 3. PDF Download ---
-        console.log('[LOG] Step 3: Downloading the generated PDF...');
+        // --- 3. Скачиваем сгенерированный PDF-файл ---
+        console.log('[3/4] Downloading generated PDF...');
         const pdfFileResponse = await fetch(downloadUrl);
         const pdfBuffer = await pdfFileResponse.arrayBuffer();
-        console.log('[LOG] Step 3 successful: PDF downloaded.');
 
-        // --- 4. Nodemailer ---
-        console.log('[LOG] Step 4: Sending email via Nodemailer...');
-        const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.EMAIL_SERVER_USER, pass: process.env.EMAIL_SERVER_PASSWORD } });
+        // --- 4. Отправляем письмо с PDF-вложением ---
+        console.log(`[4/4] Sending email to: ${email}...`);
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL_SERVER_USER,
+                pass: process.env.EMAIL_SERVER_PASSWORD,
+            },
+        });
+
         await transporter.sendMail({
             from: `"Surwix Reports" <${process.env.EMAIL_SERVER_USER}>`,
             to: email,
             subject: `Your Personal Evacuation Plan from Surwix for ${address}`,
-            text: "Thank you for using Surwix. Your AI-generated evacuation plan is attached.",
-            attachments: [{ filename: 'Surwix-Evacuation-Plan.pdf', content: Buffer.from(pdfBuffer), contentType: 'application/pdf' }],
+            text: "Thank you for using Surwix. Your AI-generated evacuation plan is attached to this email.",
+            attachments: [{
+                filename: 'Surwix-Evacuation-Plan.pdf',
+                content: Buffer.from(pdfBuffer),
+                contentType: 'application/pdf',
+            }],
         });
-        console.log('[LOG] Step 4 successful: Email sent.');
 
-        return response.status(200).json({ message: 'Success! Your report has been sent.' });
+        console.log('Process complete. Sending success response.');
+        return response.status(200).json({ message: 'Success! Your report has been generated and sent to your email.' });
 
     } catch (error) {
-        console.error('[ERROR] An error occurred:', error);
-        return response.status(500).json({ message: 'A server error occurred.' });
+        console.error('An error occurred in the process:', error);
+        return response.status(500).json({ message: 'A server error occurred. Please try again later.' });
     }
 }
