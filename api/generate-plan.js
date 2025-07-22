@@ -36,7 +36,11 @@ export default async function handler(request, response) {
 
         // --- 2. Генерируем PDF с помощью PDFMonkey ---
         console.log('[2/4] Sending data to PDFMonkey...');
-        const pdfResponse = await fetch('https://api.pdfmonkey.io/api/v1/documents', {
+        
+        // ✅ ИСПРАВЛЕН URL - ДОБАВЛЕНА ЧАСТЬ /api/
+        const pdfMonkeyUrl = 'https://api.pdfmonkey.io/api/v1/documents';
+        
+        const pdfResponse = await fetch(pdfMonkeyUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -44,7 +48,6 @@ export default async function handler(request, response) {
             },
             body: JSON.stringify({
                 document: {
-                    // ✅ ИСПРАВЛЕННАЯ СТРОКА
                     document_template_id: process.env.PDFMONKEY_TEMPLATE_ID,
                     payload: reportData,
                     status: 'draft',
