@@ -2,12 +2,69 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>API Test</title>
-    <style>body { font-family: sans-serif; text-align: center; padding-top: 50px; }</style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Surwix | Personal Evacuation Plan</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA8EpOSadTcWb0Agqno2_kSW-_UijsUqAY&libraries=places&callback=initAutocomplete" async defer></script>
 </head>
 <body>
-    <h1>API Connection Test</h1>
-    <p>Click the link below. It should lead to a page with a success message.</p>
-    <a href="/api/test">Test the API Endpoint: /api/test</a>
+
+<div class="page-container">
+  <header class="hero">
+    <div class="hero-content">
+      <h1>Get Your Personal Evacuation Plan</h1>
+      <p class="subtitle">Surwix's AI service analyzes risks for the specified address and creates a personal evacuation plan. Learn how to protect yourself and your loved ones.</p>
+      
+      <div class="form-container">
+        <form id="plan-form">
+          <div class="input-group">
+            <i class="icon-location">📍</i>
+            <input type="text" id="address-input" placeholder="Enter your U.S. address" required>
+          </div>
+           <div class="input-group">
+            <i class="icon-email">✉️</i>
+            <input type="email" id="email-input" placeholder="Your email to receive the report" required>
+          </div>
+          <button type="submit">Get PDF Report</button>
+        </form>
+        <div class="terms">
+          <input type="checkbox" id="terms-checkbox" checked>
+          <label for="terms-checkbox">I agree to the <a href="terms.html" target="_blank">Terms of Use</a></label>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="features">
+      <h2>What's Inside Your Personal Report?</h2>
+      <div class="features-grid">
+        <div class="feature-item">
+          <div class="feature-icon">🛡️</div>
+          <h3>Risk Analysis</h3>
+          <p>Assessment of threats (floods, fires, etc.) based on your geolocation.</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🗺️</div>
+          <h3>Evacuation Routes</h3>
+          <p>Primary and alternative routes to the nearest designated safe zones.</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">✅</div>
+          <h3>Action Checklist</h3>
+          <p>A step-by-step plan and a list of essential items for your "go-bag".</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>© 2025 Surwix. All rights reserved.</p>
+    <p><a href="privacy.html" target="_blank">Privacy Policy</a> | <a href="terms.html" target="_blank">Terms of Use</a></p>
+  </footer>
+</div>
+
+<script src="script.js"></script>
+
 </body>
 </html>
