@@ -226,3 +226,17 @@ button[type="submit"]:hover {
   color: #c62828;
   border-color: #ffcdd2;
 }
+
+.logo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 40px;
+  margin-bottom: 16px;
+}
+.site-logo {
+  max-width: 140px;
+  height: auto;
+  display: block;
+}
+
