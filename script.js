@@ -16,7 +16,7 @@ function showNotification(message, type) {
   notification.textContent = message;
   notification.className = 'notification ' + type;
   notification.style.display = 'block';
-  // Автоматически скрыть уведомление через 6 секунд
+  // Auto-hide notification after 6 seconds
   setTimeout(() => {
     notification.style.display = 'none';
     notification.textContent = '';
@@ -32,7 +32,7 @@ planForm.addEventListener('submit', async function(event) {
   button.textContent = 'Generating...';
   button.disabled = true;
 
-  showNotification('Генерация отчета... Пожалуйста, подождите.', 'info');
+  showNotification('Generating your evacuation report. Please wait...', 'info');
 
   try {
     const response = await fetch('/api/generate-plan', {
@@ -47,10 +47,10 @@ planForm.addEventListener('submit', async function(event) {
       throw new Error(result.message || 'An unknown error occurred.');
     }
 
-    showNotification('✅ Успех! Отчет отправлен на вашу почту.', 'success');
+    showNotification('✅ Success! Your report has been sent to your email.', 'success');
     planForm.reset();
   } catch (error) {
-    showNotification(`❌ Ошибка: ${error.message}`, 'error');
+    showNotification(`❌ Error: ${error.message}`, 'error');
   } finally {
     button.textContent = 'Get PDF Report';
     button.disabled = false;
