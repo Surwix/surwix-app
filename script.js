@@ -16,7 +16,7 @@ function showNotification(message, type) {
   notification.textContent = message;
   notification.className = 'notification ' + type;
   notification.style.display = 'block';
-  // Auto-hide notification after 6 seconds
+  // Auto-hide notification after 10 seconds
   setTimeout(() => {
     notification.style.display = 'none';
     notification.textContent = '';
