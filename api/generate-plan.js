@@ -1,150 +1,157 @@
 import { OpenAI } from 'openai';
 import nodemailer from 'nodemailer';
 
-// This function creates the HTML for the PDF
+// --- HTML-шаблон Carfax-стиля ---
 function createPdfHtml(data) {
-    const generateRiskRows = () => {
-        if (!data.risks || data.risks.length === 0) return '<tr><td colspan="3">No specific risks analyzed.</td></tr>';
-        return data.risks.map(risk => `
-            <tr>
-                <td><strong>${risk.type || 'N/A'}</strong></td>
-                <td class="risk-${risk.level_color || 'low'}">${risk.level_text || 'N/A'}</td>
-                <td>${risk.advice || 'Follow standard procedures.'}</td>
-            </tr>
-        `).join('');
-    };
+    const riskRows = (data.risks || []).map(risk => `
+      <tr>
+        <td><strong>${risk.type || '—'}</strong></td>
+        <td class="risk-${risk.level_color || 'low'}">${risk.level_text || '—'}</td>
+        <td>${risk.advice || '—'}</td>
+      </tr>
+    `).join('');
 
     return `
     <!DOCTYPE html>
     <html lang="en">
     <head>
-        <meta charset="UTF-8">
-        <title>Evacuation Plan by Surwix</title>
-        <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; color: #3a3a3a; background-color: #f9f9f9; }
-            .container { max-width: 800px; margin: 20px auto; background: #fff; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-            .header { background: #003366; color: white; padding: 24px; text-align: left; }
-            .header h1 { margin: 0; font-size: 32px; }
-            .header p { margin: 4px 0 0; opacity: 0.9; font-size: 16px; }
-            .content { padding: 25px; }
-            .section { margin-bottom: 30px; }
-            h2 { font-size: 22px; color: #003366; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; margin-top: 0; }
-            .risk-level-box { background-color: #f7f9fb; border: 1px solid #e2e8f0; padding: 15px; margin-bottom: 20px; font-size: 18px; }
-            .risk-table { width: 100%; border-collapse: collapse; }
-            .risk-table th, .risk-table td { padding: 12px 8px; border-bottom: 1px solid #e2e8f0; text-align: left; }
-            .risk-table th { font-size: 14px; color: #718096; }
-            .risk-high { color: #e53e3e; font-weight: bold; }
-            .risk-medium { color: #dd6b20; font-weight: bold; }
-            .risk-low { color: #38a169; font-weight: bold; }
-            ul { padding-left: 20px; line-height: 1.6; }
-            .footer { text-align: center; padding: 20px; font-size: 12px; color: #a0aec0; }
-        </style>
+      <meta charset="UTF-8" />
+      <title>Evacuation Report by Surwix</title>
+      <style>
+        body { font-family: Inter, Arial, sans-serif; margin: 0; background: #f8fafc; color: #232323; }
+        .carfax-header { background: #003366; color: #fff; padding: 28px 32px 20px 32px; }
+        .carfax-header .logo { height: 44px; margin-bottom: 6px; }
+        .carfax-title { font-size: 32px; font-weight: 700; letter-spacing: 0.5px; }
+        .address { margin: 6px 0 0 0; font-size: 17px; color: #e2e8f0; }
+        .date { margin: 2px 0 0 0; font-size: 13px; color: #b3c6e6; }
+        .main { background: #fff; margin: 0 auto; max-width: 720px; box-shadow: 0 4px 18px rgba(0,0,0,0.06); border-radius: 0 0 12px 12px; padding: 32px; }
+        .risk-level-box { padding: 18px; background: #f7fafc; border-left: 5px solid #5a3ec8; margin-bottom: 22px; font-size: 19px;}
+        .risk-high { color: #e53e3e; font-weight: bold; }
+        .risk-medium { color: #ed8936; font-weight: bold; }
+        .risk-low { color: #38a169; font-weight: bold; }
+        .risk-table { width: 100%; border-collapse: collapse; margin: 18px 0 32px 0; }
+        .risk-table th, .risk-table td { border-bottom: 1px solid #e2e8f0; padding: 10px 7px; }
+        .risk-table th { background: #f1f4f9; font-size: 14px; color: #1a365d; }
+        h2 { font-size: 21px; color: #234487; margin-bottom: 7px; }
+        ul { padding-left: 23px; line-height: 1.7; }
+        .tips-block { margin-bottom: 28px; }
+        .footer { text-align: right; padding: 22px 32px 12px 0; color: #8ca6c4; font-size: 13px;}
+        .disclaimer { color: #b0b0b0; font-size: 11px; margin-top: 8px;}
+      </style>
     </head>
     <body>
-        <div class="container">
-            <div class="header">
-                <h1>Evacuation Plan by Surwix</h1>
-                <p><strong>Address:</strong> ${data.address}</p>
-            </div>
-            <div class="content">
-                <div class="section">
-                    <div class="risk-level-box">
-                        <strong>Overall Risk Level:</strong> <span class="risk-${data.risk_level_color || 'low'}">${data.risk_level_text || 'Not Determined'}</span>
-                    </div>
-                </div>
-                <div class="section">
-                    <h2>Risks Analysis</h2>
-                    <table class="risk-table">
-                        <thead><tr><th>Threat</th><th>Level</th><th>Key Advice</th></tr></thead>
-                        <tbody>${generateRiskRows()}</tbody>
-                    </table>
-                </div>
-                <div class="section">
-                    <h2>What to Do (Action Plan)</h2>
-                    <ul>
-                        ${data.action_steps ? data.action_steps.map(step => `<li>${step}</li>`).join('') : '<li>Follow local authorities guidance.</li>'}
-                    </ul>
-                </div>
-            </div>
-            <div class="footer">Report generated by AI for Surwix.com on ${data.report_date}. For informational purposes only.</div>
+      <div class="carfax-header">
+        <img class="logo" src="https://surwix.com/logo.svg" alt="Surwix" />
+        <div class="carfax-title">Evacuation Report by Surwix</div>
+        <div class="address"><strong>Address:</strong> ${data.address}</div>
+        <div class="date">Report Date: ${data.report_date}</div>
+      </div>
+      <div class="main">
+        <div class="risk-level-box">
+          <b>Overall Risk Level:</b> 
+          <span class="risk-${data.risk_level_color || 'low'}">${data.risk_level_text || 'N/A'}</span>
         </div>
+        <h2>Risk Analysis</h2>
+        <table class="risk-table">
+          <thead>
+            <tr>
+              <th>Threat</th>
+              <th>Level</th>
+              <th>Key Advice</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${riskRows || '<tr><td colspan="3">No risk data available.</td></tr>'}
+          </tbody>
+        </table>
+        <div class="tips-block">
+          <h2>What To Do (Action Plan)</h2>
+          <ul>
+            ${(data.action_steps || []).map(step => `<li>${step}</li>`).join('')}
+          </ul>
+        </div>
+        <div class="disclaimer">
+          Report generated by AI for Surwix.com. For informational use only. Not a legal evacuation notice.
+        </div>
+      </div>
+      <div class="footer">
+        © ${new Date().getFullYear()} Surwix. All rights reserved.
+      </div>
     </body>
     </html>
     `;
 }
 
+// --- MAIN HANDLER ---
 export default async function handler(request, response) {
-    if (request.method !== 'POST') {
-        return response.status(405).json({ message: 'Method Not Allowed' });
+  if (request.method !== 'POST') {
+    return response.status(405).json({ message: 'Method Not Allowed' });
+  }
+
+  const { address, email } = request.body;
+  if (!address || !email) {
+    return response.status(400).json({ message: 'Address and email are required.' });
+  }
+
+  try {
+    // --- STEP 1: Get AI data ---
+    console.log(`[1/3] Generating AI data for: ${address}`);
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const prompt = `Act as a U.S. emergency preparedness analyst for the address "${address}". Generate a JSON object with these exact keys: "risk_level_text" (string: "Moderate"), "risk_level_color" (string: "low"|"medium"|"high"), "risks" (array of 3 objects: "type", "level_text", "level_color", "advice"), "action_steps" (array of 4 short string sentences). Provide realistic mock data. Respond ONLY with valid JSON (no markdown).`;
+
+    const aiCompletion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      response_format: { type: "json_object" },
+      messages: [{ role: "user", content: prompt }],
+    });
+    const reportData = JSON.parse(aiCompletion.choices[0].message.content);
+
+    reportData.address = address;
+    reportData.report_date = new Date().toLocaleDateString('en-US');
+
+    // --- STEP 2: PDF Generation (PDFShift) ---
+    console.log(`[2/3] Generating PDF with PDFShift...`);
+    const htmlForPdf = createPdfHtml(reportData);
+
+    const pdfShiftResponse = await fetch('https://api.pdfshift.io/v3/convert/pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source: htmlForPdf,
+        auth: process.env.PDFSHIFT_API_KEY,
+      }),
+    });
+
+    if (!pdfShiftResponse.ok) {
+      throw new Error(`PDFShift Error: ${await pdfShiftResponse.text()}`);
     }
 
-    const { address, email } = request.body;
-    if (!address || !email) {
-        return response.status(400).json({ message: 'Address and email are required' });
-    }
+    const pdfBuffer = await pdfShiftResponse.arrayBuffer();
+    console.log('PDF generated.');
 
-    try {
-        // --- Step 1: Get data from OpenAI ---
-        console.log(`[1/3] Generating structured AI data for: ${address}`);
-        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-        const prompt = `Act as a U.S. emergency preparedness analyst for the address "${address}". Generate a JSON object with these exact keys: "risk_level_text" (string, e.g., "Moderate"), "risk_level_color" (string: "low", "medium", or "high"), "risks" (an array of 3 objects, each with "type", "level_text", "level_color", "advice"), and "action_steps" (an array of 4 short string sentences). Provide realistic mock data based on a plausible US location. Your response must be ONLY a valid JSON object without any other text or markdown.`;
-        
-        const aiCompletion = await openai.chat.completions.create({
-            model: "gpt-4o",
-            response_format: { type: "json_object" },
-            messages: [{ role: "user", content: prompt }],
-        });
-        const reportData = JSON.parse(aiCompletion.choices[0].message.content);
-        
-        reportData.address = address;
-        reportData.report_date = new Date().toLocaleDateString('en-US');
-        console.log('AI data received and parsed.');
+    // --- STEP 3: Send Email ---
+    console.log(`[3/3] Sending email to: ${email}...`);
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: process.env.EMAIL_SERVER_USER, pass: process.env.EMAIL_SERVER_PASSWORD },
+    });
 
-        // --- Step 2: Generate PDF with PDFshift ---
-        console.log(`[2/3] Generating PDF with PDFshift...`);
-        const htmlToConvert = createPdfHtml(reportData);
+    await transporter.sendMail({
+      from: `"Surwix Reports" <${process.env.EMAIL_SERVER_USER}>`,
+      to: email,
+      subject: `Your Personal Evacuation Plan from Surwix for ${address}`,
+      text: "Thank you for using Surwix. Your PDF report is attached.",
+      attachments: [{
+        filename: 'Surwix-Evacuation-Plan.pdf',
+        content: Buffer.from(pdfBuffer),
+        contentType: 'application/pdf',
+      }],
+    });
 
-        const pdfShiftResponse = await fetch('https://api.pdfshift.io/v3/convert/pdf', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                source: htmlToConvert,
-                // ✅ FIX: The 'auth' key must be inside the main JSON body
-                auth: process.env.PDFSHIFT_API_KEY, 
-            }),
-        });
-        
-        if (!pdfShiftResponse.ok) {
-            throw new Error(`PDFshift Error: ${await pdfShiftResponse.text()}`);
-        }
-        
-        const pdfBuffer = await pdfShiftResponse.arrayBuffer();
-        console.log('PDF generated by PDFshift.');
+    return response.status(200).json({ message: 'Success! Your report has been generated and sent to your email.' });
 
-        // --- Step 3: Send email ---
-        console.log(`[3/3] Sending email to: ${email}...`);
-        const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: { user: process.env.EMAIL_SERVER_USER, pass: process.env.EMAIL_SERVER_PASSWORD },
-        });
-
-        await transporter.sendMail({
-            from: `"Surwix Reports" <${process.env.EMAIL_SERVER_USER}>`,
-            to: email,
-            subject: `Your Personal Evacuation Plan from Surwix for ${address}`,
-            text: "Thank you for using Surwix. Your PDF report is attached.",
-            attachments: [{
-                filename: 'Surwix-Evacuation-Plan.pdf',
-                content: Buffer.from(pdfBuffer),
-                contentType: 'application/pdf',
-            }],
-        });
-        console.log('Email sent.');
-
-        return response.status(200).json({ message: 'Success! Your report has been generated and sent to your email.' });
-
-    } catch (error) {
-        console.error('An error occurred in the main handler:', error);
-        return response.status(500).json({ message: 'A server error occurred. Please check the logs.' });
-    }
+  } catch (error) {
+    console.error('Error in /api/generate-plan:', error);
+    return response.status(500).json({ message: 'A server error occurred. Please try again later.' });
+  }
 }
