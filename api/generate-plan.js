@@ -117,14 +117,15 @@ const apiKey = process.env.PDFSHIFT_API_KEY + ':'; // обязательно д�
 const encodedKey = Buffer.from(apiKey).toString('base64');
 
 const pdfShiftResponse = await fetch('https://api.pdfshift.io/v3/convert/pdf', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Basic ${encodedKey}`,
-  },
-  body: JSON.stringify({ source: htmlToConvert }),
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Basic ' + Buffer.from(process.env.PDFSHIFT_API_KEY + ':').toString('base64')
+    },
+    body: JSON.stringify({
+      source: htmlToConvert
+    }),
 });
-
 if (!pdfShiftResponse.ok) {
   throw new Error(`PDFshift Error: ${await pdfShiftResponse.text()}`);
 }
