@@ -1,91 +1,67 @@
-// Инициализируем Google Places Autocomplete
 function initAutocomplete() {
-  const addressInput = document.getElementById('address-input');
-  if (!addressInput) return;
+  const addrInput = document.getElementById("address-input");
+  if (!addrInput) return;
 
-  const autocomplete = new google.maps.places.Autocomplete(addressInput, {
-    types: ['address'],
-    componentRestrictions: { country: 'us' },
+  const autocomplete = new google.maps.places.Autocomplete(addrInput, {
+    types: ["address"],
+    componentRestrictions: { country: "us" },
   });
 
-  let placeLat = null;
-  let placeLng = null;
-  let placeState = null;
+  let lat = null, lng = null, state = null;
 
-  autocomplete.addListener('place_changed', () => {
+  autocomplete.addListener("place_changed", () => {
     const place = autocomplete.getPlace();
     if (!place.geometry) return;
-
-    placeLat = place.geometry.location.lat();
-    placeLng = place.geometry.location.lng();
-
-    // достаём short_name штата из компонентов адреса
-    const comp = place.address_components.find(c =>
-      c.types.includes('administrative_area_level_1')
-    );
-    placeState = comp ? comp.short_name : null;
+    lat = place.geometry.location.lat();
+    lng = place.geometry.location.lng();
+    const comp = place.address_components.find(c => c.types.includes("administrative_area_level_1"));
+    state = comp?.short_name || null;
   });
 
-  // Основной обработчик формы
-  const planForm = document.getElementById('plan-form');
-  const button   = planForm.querySelector('button');
-  const note     = document.getElementById('notification');
+  const form = document.getElementById("plan-form");
+  const btn  = form.querySelector("button");
+  const note = document.getElementById("notification");
 
-  function showNotification(message, type) {
-    note.textContent = message;
-    note.className = 'notification ' + type;
-    note.style.display = 'block';
-    setTimeout(() => note.style.display = 'none', 6000);
+  function notify(msg, type="info") {
+    note.textContent = msg;
+    note.className = "notification " + type;
+    note.style.display = "block";
+    setTimeout(() => note.style.display = "none", 6000);
   }
 
-  planForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-
-    const address = addressInput.value.trim();
-    const email   = document.getElementById('email-input').value.trim();
-
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const address = addrInput.value.trim();
+    const email   = document.getElementById("email-input").value.trim();
     if (!address || !email) {
-      showNotification('Please enter both address and email.', 'error');
-      return;
+      notify("Address and email are required", "error"); return;
     }
-    if (placeLat == null || !placeState) {
-      showNotification('Please select a valid address from suggestions.', 'error');
-      return;
+    if (lat == null || !state) {
+      notify("Please select a valid address", "error"); return;
     }
-
-    button.textContent = 'Generating...';
-    button.disabled = true;
-    showNotification('Report is being generated…', 'info');
+    btn.textContent = "Generating...";
+    btn.disabled = true;
+    notify("Report is being generated…", "info");
 
     try {
-      const response = await fetch('/api/generate-plan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          address,
-          email,
-          lat: placeLat,
-          lng: placeLng,
-          state: placeState
-        })
+      const res = await fetch("/api/generate-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address, email, lat, lng, state })
       });
-
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.message || 'Unknown error');
-
-      showNotification(result.message, 'success');
-      planForm.reset();
-      // сбросим данные геолокации
-      placeLat = placeLng = placeState = null;
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.message);
+      notify(body.message, "success");
+      form.reset();
+      lat = lng = state = null;
     } catch (err) {
       console.error(err);
-      showNotification(`Error: ${err.message}`, 'error');
+      notify("Error: " + err.message, "error");
     } finally {
-      button.textContent = 'Get PDF Report';
-      button.disabled = false;
+      btn.textContent = "Get PDF Report";
+      btn.disabled = false;
     }
   });
 }
 
-// Запускаем автокомплит после загрузки Google Maps
 window.initAutocomplete = initAutocomplete;
