@@ -45,7 +45,7 @@ function createPdfHtml(data) {
   <div class="swx-header">
     <div class="swx-header-title">
       <h1>Personal Evacuation Report</h1>
-      <span class="swx-by">by <img src="https://your-domain.com/logo.png" alt="Logo" class="swx-logo"/></span>
+      <span class="swx-by">by <img src="https://github.com/Surwix/surwix-app/blob/main/logo.png" alt="Logo" class="swx-logo"/></span>
     </div>
     <div class="swx-meta">
       <span><b>Address:</b> ${data.address}</span>
