@@ -1,48 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" href="/favicon-32x32.png" type="image/x-icon" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Surwix | Personal Evacuation Plan</title>
 
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Surwix | Personal Evacuation Plan</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA8EpOSadTcWb0Agqno2_kSW-_UijsUqAY&libraries=places&callback=initAutocomplete" async defer></script>
+  <!-- favicon -->
+  <link rel="icon" href="/favicon-32x32.png" type="image/png" />
+
+  <!-- стили -->
+  <link rel="stylesheet" href="/style.css" />
 </head>
+
 <body>
-
-<div class="page-container">
-  <header class="hero">
-    <div class="hero-content">
-
- <div class="logo-container">
-  <img src="/logo.png" alt="Surwix Logo" class="site-logo">
-</div>
-        
-      <h1>Get Your Personal Evacuation Plan</h1>
-      <p class="subtitle">Surwix's AI service analyzes risks for the specified address and creates a personal evacuation plan. Learn how to protect yourself and your loved ones.</p>
-      
-      <div class="form-container">
-        <form id="plan-form">
-            
-          <div class="input-group">
-            <i class="icon-location">📍</i>
-            <input type="text" id="address-input" placeholder="Enter your U.S. address" required>
-          </div>
-           <div class="input-group">
-            <i class="icon-email">✉️</i>
-            <input type="email" id="email-input" placeholder="Your email to receive the report" required>
-          </div>
-          <button type="submit">Get PDF Report</button>
-            <div id="notification" class="notification"></div>
-        </form>
-        <div class="terms">
-          <input type="checkbox" id="terms-checkbox" checked>
-          <label for="terms-checkbox">I agree to the <a href="terms.html" target="_blank">Terms of Use</a></label>
-        </div>
+  <div class="page-container">
+    <!-- ========== HERO / HEADER ========== -->
+    <header class="hero">
+      <div class="logo-container" style="text-align:center; margin-bottom:20px;">
+        <img src="/logo.png" alt="Surwix Logo" class="site-logo" style="height:60px;" />
       </div>
+      <div class="hero-content">
+        <h1>Get Your Personal Evacuation Plan</h1>
+        <p class="subtitle">
+          Surwix’s AI service analyzes risks for the specified address and creates a personal evacuation plan. Learn how to protect yourself and your loved ones.
+        </p>
+      </div>
+    </header>
+
+    <!-- ========== FORM ========== -->
+    <div class="form-container">
+      <form id="plan-form">
+        <div class="input-group">
+          <span class="icon-location">📍</span>
+          <input id="address-input" type="text" placeholder="Enter your address" required />
+        </div>
+        <div class="input-group">
+          <span class="icon-email">✉️</span>
+          <input id="email-input" type="email" placeholder="you@example.com" required />
+        </div>
+        <button type="submit">Get PDF Report</button>
+        <p class="terms">
+          <input type="checkbox" id="tos" required /> 
+          <label for="tos">I agree to the <a href="#">Terms of Use</a></label>
+        </p>
+        <div id="notification" class="notification"></div>
+      </form>
     </div>
-  </header>
+  </div>
+
+  <!-- Google Maps JS с Autocomplete -->
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_KEY&libraries=places&callback=initAutocomplete"
+    async defer
+  ></script>
+
+  <!-- Ваш основной скрипт (обработчик формы) -->
+  <script src="/script.js"></script>
+</body>
+</html>
+
 
   <main>
     <section class="features">
