@@ -1,7 +1,7 @@
 import { OpenAI } from 'openai';
 import nodemailer from 'nodemailer';
 
-// Вся функция createPdfHtml остается без изменений, она правильная
+// Функция createPdfHtml остается без изменений
 function createPdfHtml(data) {
     const generateRiskRows = () => {
         if (!data.hazard_matrix || data.hazard_matrix.length === 0) return '<tr><td colspan="4">No specific risks analyzed.</td></tr>';
@@ -96,7 +96,7 @@ export default async function handler(request, response) {
     }
 
     try {
-        // --- Шаг 1: OpenFEMA ---
+        // --- Шаг 1: OpenAI ---
         console.log('[1/4] Fetching data from OpenFEMA...');
         let recentDisasters = [];
         try {
@@ -139,17 +139,21 @@ export default async function handler(request, response) {
         reportData.recent_disasters = recentDisasters;
         console.log('AI data received and parsed.');
 
-        // --- Шаг 3: PDFshift ---
+        // --- Шаг 3: PDFshift (ИСПРАВЛЕННЫЙ ЗАПРОС) ---
         console.log(`[3/4] Generating PDF with PDFshift...`);
         const htmlToConvert = createPdfHtml(reportData);
 
+        // ✅ ИСПРАВЛЕНИЕ: Аутентификация передается в заголовках (headers), а не в теле (body)
         const pdfShiftResponse = await fetch('https://api.pdfshift.io/v3/convert/pdf', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            // ✅ ИСПРАВЛЕНИЕ: Ключ 'auth' должен быть на одном уровне с 'source'
+            headers: {
+                'Content-Type': 'application/json',
+                // Basic Auth требует закодировать ключ в Base64. 
+                // ":<api_key>" становится "OmYOUR_API_KEY_BASE64"
+                'Authorization': 'Basic ' + Buffer.from(`:${process.env.PDFSHIFT_API_KEY}`).toString('base64')
+            },
             body: JSON.stringify({
-                source: htmlToConvert,
-                auth: process.env.PDFSHIFT_API_KEY
+                source: htmlToConvert
             }),
         });
         
