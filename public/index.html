@@ -10,15 +10,25 @@
 
   <!-- стили -->
   <link rel="stylesheet" href="/style.css" />
-</head>
 
+  <!-- GOOGLE MAPS: обратите внимание на loading=async и async defer -->
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_KEY
+         &libraries=places
+         &callback=initAutocomplete
+         &loading=async"
+    async
+    defer
+  ></script>
+
+  <!-- ваш JS: загрузится после всего -->
+  <script src="/script.js" defer></script>
+</head>
 <body>
-  <div class="page-container">
-    <!-- ========== HERO / HEADER ========== -->
-    <header class="hero">
-      <div class="logo-container" style="text-align:center; margin-bottom:20px;">
-        <img src="/logo.png" alt="Surwix Logo" class="site-logo" style="height:60px;" />
-      </div>
+  <!-- ... остальной HTML ... -->
+</body>
+</html>
+
       <div class="hero-content">
         <h1>Get Your Personal Evacuation Plan</h1>
         <p class="subtitle">
