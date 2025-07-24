@@ -1,19 +1,37 @@
 import { OpenAI } from 'openai';
 import nodemailer from 'nodemailer';
 
-// Функция createPdfHtml остается без изменений
+// --- ФИНАЛЬНАЯ ФУНКЦИЯ ДЛЯ СОЗДАНИЯ HTML-ОТЧЕТА ---
+// Эта функция берет все данные от ИИ и генерирует из них красивый HTML,
+// полностью соответствующий вашему шаблону.
 function createPdfHtml(data) {
-    const generateRiskRows = () => {
-        if (!data.hazard_matrix || data.hazard_matrix.length === 0) return '<tr><td colspan="4">No specific risks analyzed.</td></tr>';
-        return data.hazard_matrix.map(risk => `
-            <tr>
-                <td>${risk.threat || 'N/A'}</td>
-                <td class="swx-risk-${risk.level_color || 'low'}">${risk.level || 'N/A'}</td>
-                <td>${risk.advice || 'Follow standard procedures.'}</td>
-                <td>${risk.probability || 'N/A'}</td>
-            </tr>
-        `).join('');
-    };
+    const generateRiskRows = () => data.hazard_matrix?.map(risk => `
+        <tr>
+            <td>${risk.threat || ''}</td>
+            <td class="swx-risk-${risk.level_color || 'low'}">${risk.level || ''}</td>
+            <td>${risk.advice || ''}</td>
+            <td>${risk.probability || ''}</td>
+        </tr>
+    `).join('') || '';
+
+    const generateResourceList = () => data.nearby_resources?.map(res => `
+        <li>
+            <span class="type">${res.type}:</span> ${res.name}
+            <span class="distance">${res.distance}</span>
+        </li>
+    `).join('') || '';
+
+    const generateChecklist = () => data.checklist?.map(item => `
+        <li><i class="fa fa-check-circle"></i> ${item}</li>
+    `).join('') || '';
+    
+    const generateAiTips = () => data.ai_tips?.map(tip => `
+        <li><i class="fa fa-lightbulb"></i> ${tip}</li>
+    `).join('') || '';
+    
+    const generateHistoryList = () => data.hazard_history?.map(item => `
+        <li>${item}</li>
+    `).join('') || '';
 
     return `
     <!DOCTYPE html>
@@ -47,11 +65,14 @@ function createPdfHtml(data) {
             .src-badge { font-size: 12px; padding: 2px 6px; border-radius: 4px; background: #eef4fa; border: 1px solid #c4d9ec; color: #4682b4; margin-left: 8px; display: inline-block; vertical-align: middle; }
             .source { display: block; font-size: 12px; color: #9ea3ab; margin-top: 8px; }
             .section { margin: 40px 0 32px; padding: 24px; background: #f9fbfe; border-radius: 10px; border: 1px solid #e5ecf6; box-shadow: 0 3px 8px rgba(30, 72, 145, 0.05); }
-            .section h2 { display: flex; align-items: center; gap: 10px; }
-            ul { list-style: none; padding: 0; margin: 0; }
-            li { margin-bottom: 10px; }
-            .checklist-list li { display: flex; align-items: center; font-size: 16px; }
-            .checklist-list li i { margin-right: 10px; color: #39b77d; }
+            .section h2 { color: #003366; font-size: 24px; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
+            .resource-list, .checklist-list, .tips-list, .history-list { list-style: none; padding: 0; margin: 0; }
+            .resource-list li, .checklist-list li, .tips-list li, .history-list li { font-size: 16px; margin-bottom: 10px; display: flex; align-items: center; }
+            .resource-list .type { font-weight: bold; color: #005A9C; }
+            .resource-list .distance { margin-left: 10px; color: #aaa; font-size: 13px; }
+            .checklist-list li i, .tips-list li i { margin-right: 10px; font-size: 17px; }
+            .checklist-list li i { color: #39b77d; }
+            .tips-list li i { color: #ffc107; }
             .swx-footer { border-top: 1px solid #ececec; padding-top: 13px; text-align: center; color: #7d90aa; font-size: 12px; margin-top: 20px; }
         </style>
     </head>
@@ -61,23 +82,13 @@ function createPdfHtml(data) {
                 <div class="swx-header-title"><h1>Personal Evacuation Report</h1><span class="swx-by">by Surwix</span></div>
                 <div class="swx-meta"><span><b>Address:</b> ${data.address}</span><span><b>Date:</b> ${data.report_date}</span><span><b>Report ID:</b> ${data.report_id}</span></div>
             </div>
-            <div class="swx-summary swx-risk-${data.overall_risk.level_color || 'moderate'}">
-                <b>Overall Risk:</b> ${data.overall_risk.level || 'Moderate'}
-                <span class="swx-maincomment">${data.overall_risk.summary || ''}</span>
-            </div>
-            <div class="swx-section">
-                <h2>Hazard Risk Matrix</h2>
-                <table class="swx-table"><thead><tr><th>Threat</th><th>Level</th><th>Advice</th><th>Probability</th></tr></thead><tbody>${generateRiskRows()}</tbody></table>
-            </div>
-            <div class="swx-section">
-                <h2>Recent Disasters <span class="src-badge">OpenFEMA</span></h2>
-                <ul>${data.recent_disasters.length > 0 ? data.recent_disasters.map(d => `<li>${d}</li>`).join('') : '<li>No major disasters declared recently.</li>'}</ul>
-                <small class="source">Source: OpenFEMA.gov</small>
-            </div>
-            <div class="section checklist">
-                <h2><i class="fa fa-clipboard-check"></i> Evacuation Checklist</h2>
-                <ul class="checklist-list">${data.checklist ? data.checklist.map(item => `<li><i class="fa fa-check-circle"></i> ${item}</li>`).join('') : ''}</ul>
-            </div>
+            <div class="swx-summary swx-risk-${data.overall_risk?.level_color || 'moderate'}"><b>Overall Risk:</b> ${data.overall_risk?.level || 'Moderate'}<span class="swx-maincomment">${data.overall_risk?.summary || ''}</span></div>
+            <div class="swx-section"><h2>Hazard Risk Matrix</h2><table class="swx-table"><thead><tr><th>Threat</th><th>Level</th><th>Advice</th><th>Probability</th></tr></thead><tbody>${generateRiskRows()}</tbody></table></div>
+            <div class="swx-section"><h2>Recent Disasters <span class="src-badge">OpenFEMA</span></h2><ul>${data.recent_disasters.length > 0 ? data.recent_disasters.map(d => `<li>${d}</li>`).join('') : '<li>No major disasters declared recently.</li>'}</ul><small class="source">Source: OpenFEMA.gov</small></div>
+            <div class="section resources"><h2><i class="fa fa-map-marker-alt"></i> Nearby Emergency Resources</h2><ul class="resource-list">${generateResourceList()}</ul></div>
+            <div class="section checklist"><h2><i class="fa fa-clipboard-check"></i> Evacuation Checklist</h2><ul class="checklist-list">${generateChecklist()}</ul></div>
+            <div class="section ai-tips"><h2><i class="fa fa-robot"></i> Personalized AI Tips</h2><ul class="tips-list">${generateAiTips()}</ul></div>
+            <div class="section recent-history"><h2><i class="fa fa-history"></i> Recent Hazard History</h2><ul class="history-list">${generateHistoryList()}</ul></div>
             <div class="swx-footer"><small>Data analysis provided by OpenAI. Additional data from FEMA, NOAA. This report is for informational purposes only. Always follow instructions from local authorities.</small></div>
         </div>
     </body>
@@ -86,44 +97,47 @@ function createPdfHtml(data) {
 }
 
 export default async function handler(request, response) {
-    if (request.method !== 'POST') {
-        return response.status(405).json({ message: 'Method Not Allowed' });
-    }
+    if (request.method !== 'POST') return response.status(405).json({ message: 'Method Not Allowed' });
 
     const { address, email } = request.body;
-    if (!address || !email) {
-        return response.status(400).json({ message: 'Address and email are required' });
-    }
+    if (!address || !email) return response.status(400).json({ message: 'Address and email are required' });
 
     try {
-        // --- Шаг 1: OpenAI ---
+        // --- ШАГ 1: ПОЛУЧАЕМ ДАННЫЕ ОТ OPENFEMA ---
         console.log('[1/4] Fetching data from OpenFEMA...');
         let recentDisasters = [];
         try {
             const state = address.split(',').slice(-2, -1)[0].trim();
             if (state) {
-                const femaURL = `https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries?$filter=state%20eq%20'${state}'&$orderby=declarationDate%20desc&$top=3`;
+                const femaURL = `https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries?$filter=state%20eq%20'${state}'&$orderby=declarationDate%20desc&$top=2`;
                 const femaResponse = await fetch(femaURL);
                 if (femaResponse.ok) {
                     const femaData = await femaResponse.json();
-                    recentDisasters = femaData.DisasterDeclarationsSummaries.map(d => `${d.incidentType} (${new Date(d.declarationDate).getFullYear()})`);
+                    if (femaData.DisasterDeclarationsSummaries) {
+                        recentDisasters = femaData.DisasterDeclarationsSummaries.map(d => `${d.incidentType} (${new Date(d.declarationDate).getFullYear()})`);
+                    }
                 }
             }
         } catch (e) { console.error("Could not fetch from OpenFEMA, proceeding without it.", e); }
         console.log('OpenFEMA data received.');
 
-        // --- Шаг 2: OpenAI ---
+        // --- ШАГ 2: ФОРМИРУЕМ "МАСТЕР-ПРОМПТ" ДЛЯ OPENAI ---
         console.log('[2/4] Generating AI data...');
         const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
         const prompt = `
             Act as a U.S. emergency preparedness expert for the address: "${address}".
             For context, recent FEMA-declared disasters in this state include: ${recentDisasters.join(', ') || 'None'}.
+            
             Generate a comprehensive report as a single JSON object. Your response must be ONLY a valid JSON object without any other text or markdown.
             The JSON object must have these exact keys:
-            1.  "overall_risk": An object with "level" (string: "Low", "Moderate", or "High"), "level_color" (string: "low", "moderate", or "high"), and "summary" (a short, one-sentence explanation).
-            2.  "hazard_matrix": An array of exactly 3 objects. Each object must have "threat" (e.g., "Tornado", "Flood", "Wildfire"), "level" (string), "level_color" (string), "advice" (a short, actionable string), and "probability" (a plausible statistic, e.g., "1 in 100 year zone").
-            3.  "checklist": An array of 6 short, actionable strings for an evacuation checklist.
-            Base your analysis on the provided address to generate plausible, realistic mock data for all fields. Use the FEMA data for context.
+            1.  "overall_risk": An object with "level" ("Low", "Moderate", or "High"), "level_color" ("low", "moderate", or "high"), and "summary" (a one-sentence explanation).
+            2.  "hazard_matrix": An array of exactly 3 objects. Each object must have "threat" ("Tornado", "Flood", etc.), "level", "level_color", "advice", and "probability" (a plausible statistic).
+            3.  "nearby_resources": An array of 3 objects, each representing a plausible nearby emergency resource (Shelter, Hospital, Fire Station) with keys "type", "name", and "distance".
+            4.  "checklist": An array of 6 short, actionable strings for an evacuation checklist.
+            5.  "ai_tips": An array of 2 short, insightful strings for the "Personalized AI Tips" section.
+            6.  "hazard_history": An array of 2 short strings summarizing recent hazard events (e.g., "3 tornado warnings in past 5 years").
+            
+            Generate realistic, plausible mock data for all fields based on the address's general region (e.g., Midwest for tornadoes, Florida for hurricanes).
         `;
         
         const aiCompletion = await openai.chat.completions.create({
@@ -139,32 +153,20 @@ export default async function handler(request, response) {
         reportData.recent_disasters = recentDisasters;
         console.log('AI data received and parsed.');
 
-        // --- Шаг 3: PDFshift (ИСПРАВЛЕННЫЙ ЗАПРОС) ---
+        // --- ШАГ 3: ГЕНЕРАЦИЯ PDF ---
         console.log(`[3/4] Generating PDF with PDFshift...`);
         const htmlToConvert = createPdfHtml(reportData);
-
-        // ✅ ИСПРАВЛЕНИЕ: Аутентификация передается в заголовках (headers), а не в теле (body)
         const pdfShiftResponse = await fetch('https://api.pdfshift.io/v3/convert/pdf', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                // Basic Auth требует закодировать ключ в Base64. 
-                // ":<api_key>" становится "OmYOUR_API_KEY_BASE64"
-                'Authorization': 'Basic ' + Buffer.from(`:${process.env.PDFSHIFT_API_KEY}`).toString('base64')
-            },
-            body: JSON.stringify({
-                source: htmlToConvert
-            }),
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + Buffer.from(`:${process.env.PDFSHIFT_API_KEY}`).toString('base64') },
+            body: JSON.stringify({ source: htmlToConvert }),
         });
         
-        if (!pdfShiftResponse.ok) {
-            throw new Error(`PDFshift Error: ${await pdfShiftResponse.text()}`);
-        }
-        
+        if (!pdfShiftResponse.ok) throw new Error(`PDFshift Error: ${await pdfShiftResponse.text()}`);
         const pdfBuffer = await pdfShiftResponse.arrayBuffer();
         console.log('PDF generated by PDFshift.');
 
-        // --- Шаг 4: Nodemailer ---
+        // --- ШАГ 4: ОТПРАВКА ПИСЬМА ---
         console.log(`[4/4] Sending email to: ${email}...`);
         const transporter = nodemailer.createTransport({
             service: 'gmail',
@@ -176,11 +178,7 @@ export default async function handler(request, response) {
             to: email,
             subject: `Your Personal Evacuation Plan from Surwix for ${address}`,
             text: "Thank you for using Surwix. Your PDF report is attached.",
-            attachments: [{
-                filename: 'Surwix-Evacuation-Plan.pdf',
-                content: Buffer.from(pdfBuffer),
-                contentType: 'application/pdf',
-            }],
+            attachments: [{ filename: 'Surwix-Evacuation-Plan.pdf', content: Buffer.from(pdfBuffer), contentType: 'application/pdf' }],
         });
         console.log('Email sent.');
 
