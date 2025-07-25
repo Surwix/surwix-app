@@ -8,31 +8,46 @@ function initAutocomplete() {
   }
 }
 
+// Находим все нужные элементы на странице
 const planForm = document.getElementById('plan-form');
 const button = planForm.querySelector('button');
 const notification = document.getElementById('notification');
 
+// Функция для показа уведомлений
 function showNotification(message, type) {
-  notification.textContent = message;
-  notification.className = 'notification ' + type;
-  notification.style.display = 'block';
-  // Auto-hide notification after 10 seconds
-  setTimeout(() => {
-    notification.style.display = 'none';
-    notification.textContent = '';
-    notification.className = 'notification';
-  }, 6000);
+    notification.textContent = message;
+    notification.className = 'notification ' + type; 
+    notification.style.display = 'block';
+
+    setTimeout(() => {
+        notification.style.display = 'none';
+    }, 6000);
 }
 
+// Обработчик отправки формы
 planForm.addEventListener('submit', async function(event) {
-  event.preventDefault();
+  event.preventDefault(); // Предотвращаем стандартную перезагрузку
+
   const address = document.getElementById('address-input').value;
   const email = document.getElementById('email-input').value;
+  // ✅ НОВАЯ ПРОВЕРКА: Получаем состояние чекбокса
+  const terms = document.getElementById('terms-checkbox').checked;
 
+  if (!address || !email) {
+    showNotification('Please fill in both the address and email fields.', 'error');
+    return;
+  }
+  
+  // ✅ НОВАЯ ПРОВЕРКА: Если галочка не стоит, показываем ошибку и выходим
+  if (!terms) {
+    showNotification('Please agree to the Terms of Use to proceed.', 'error');
+    return;
+  }
+
+  // Блокируем кнопку на время запроса
   button.textContent = 'Generating...';
   button.disabled = true;
-
-  showNotification('Generating your evacuation report. Please wait...', 'info');
+  notification.style.display = 'none';
 
   try {
     const response = await fetch('/api/generate-plan', {
@@ -47,12 +62,18 @@ planForm.addEventListener('submit', async function(event) {
       throw new Error(result.message || 'An unknown error occurred.');
     }
 
-    showNotification('✅ Success! Your report has been sent to your email.', 'success');
-    planForm.reset();
+    showNotification(result.message, 'success');
+    planForm.reset(); // Очищаем форму
+
   } catch (error) {
-    showNotification(`❌ Error: ${error.message}`, 'error');
+    showNotification(`Error: ${error.message}`, 'error');
+    console.error('Fetch error:', error);
   } finally {
+    // Возвращаем кнопку в исходное состояние
     button.textContent = 'Get PDF Report';
     button.disabled = false;
   }
 });
+
+// Запускаем автозаполнение адреса
+initAutocomplete();
